@@ -1,12 +1,14 @@
 package com.ecore.roles.service.impl;
 
+import com.ecore.roles.client.model.Team;
 import com.ecore.roles.exception.ResourceExistsException;
 import com.ecore.roles.exception.ResourceNotFoundException;
+import com.ecore.roles.model.Membership;
 import com.ecore.roles.model.Role;
 import com.ecore.roles.repository.MembershipRepository;
 import com.ecore.roles.repository.RoleRepository;
-import com.ecore.roles.service.MembershipsService;
 import com.ecore.roles.service.RolesService;
+import com.ecore.roles.service.TeamsService;
 import lombok.NonNull;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,16 +25,16 @@ public class RolesServiceImpl implements RolesService {
 
     private final RoleRepository roleRepository;
     private final MembershipRepository membershipRepository;
-    private final MembershipsService membershipsService;
+    private final TeamsService teamsService;
 
     @Autowired
     public RolesServiceImpl(
             RoleRepository roleRepository,
             MembershipRepository membershipRepository,
-            MembershipsService membershipsService) {
+            TeamsService teamsService) {
         this.roleRepository = roleRepository;
         this.membershipRepository = membershipRepository;
-        this.membershipsService = membershipsService;
+        this.teamsService = teamsService;
     }
 
     @Override
@@ -47,6 +49,18 @@ public class RolesServiceImpl implements RolesService {
     public Role GetRole(@NonNull UUID rid) {
         return roleRepository.findById(rid)
                 .orElseThrow(() -> new ResourceNotFoundException(Role.class, rid));
+    }
+
+    @Override
+    public Role GetRole(@NonNull UUID teamId, @NonNull UUID userId) {
+        Team team = teamsService.getTeam(teamId);
+        if (team == null) {
+            throw new ResourceNotFoundException(Team.class, teamId);
+        }
+        Membership m = membershipRepository.findByUserIdAndTeamId(userId, teamId)
+                .orElseThrow(() -> new ResourceNotFoundException(Membership.class, userId, teamId));
+        return roleRepository.findById(m.getRole().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(Role.class, m.getRole().getId()));
     }
 
     @Override
